@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EDA on {{ filename }}</title>
+    <link href="https://fonts.googleapis.com/css?family=Inter:400,600,800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Roboto', Arial, sans-serif;
+            background: #f7fafc;
+            color: #222;
+            margin: 0;
+        }
+        .main-header {
+            padding: 2.5rem 0 1.5rem 0;
+            margin-bottom: 2.5rem;
+            text-align: center;
+        }
+        .main-title {
+            font-weight: 800;
+            font-size: 2.5rem;
+            color: #00e676;
+            letter-spacing: 1px;
+            margin-bottom: 0.5rem;
+        }
+        .section-title {
+            color: #00e676;
+            font-weight: 800;
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+        }
+        .card {
+            border-radius: 22px;
+            box-shadow: 0 4px 32px rgba(0,230,118,0.07);
+            margin-bottom: 40px;
+            border: none;
+            background: #fff;
+        }
+        .card-header {
+            background: #fff;
+            border-radius: 22px 22px 0 0 !important;
+            font-weight: 700;
+            color: #00e676;
+            font-size: 1.3rem;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        .plot-img {
+            width: 100%;
+            margin: 18px 0;
+            border-radius: 12px;
+            box-shadow: 0 2px 16px rgba(0,230,118,0.08);
+            cursor: zoom-in;
+            transition: box-shadow 0.2s, transform 0.2s;
+        }
+        .plot-img:hover {
+            box-shadow: 0 8px 32px rgba(0,230,118,0.18);
+            transform: scale(1.01);
+        }
+        .modal-img {
+            max-width: 90vw;
+            max-height: 80vh;
+            border-radius: 12px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.25);
+        }
+        .modal-backdrop {
+            background: rgba(0,0,0,0.7);
+        }
+        .footer {
+            text-align: center;
+            color: #888;
+            font-size: 1rem;
+            margin: 40px 0 10px 0;
+        }
+        .table-responsive {
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .nav-tabs {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 2px 8px rgba(0,230,118,0.04);
+            margin-bottom: 1.5rem;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .nav-tabs .nav-link.active {
+            color: #fff;
+            background: #00e676;
+            border: none;
+        }
+        .nav-tabs .nav-link {
+            color: #00e676;
+            font-weight: 600;
+            border: none;
+        }
+        .alert-info, .alert-success, .alert-warning, .alert-danger {
+            border-radius: 12px;
+        }
+        .sticky-nav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: #f7fafc;
+            padding: 0.5rem 0 0.5rem 0;
+        }
+        @media (max-width: 600px) {
+            .main-title { font-size: 1.3rem; }
+            .section-title { font-size: 1.3rem; }
+            .main-header { padding: 1.2rem 0 1.2rem 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-header">
+        <div class="main-title">EDA on {{ filename }}</div>
+    </div>
+    <div class="container py-4">
+        <div class="sticky-nav mb-4 d-flex flex-wrap gap-2 justify-content-center">
+            <a href="#overview" class="btn btn-outline-success">Overview</a>
+            <a href="#column-stats" class="btn btn-outline-success">Column Stats</a>
+            <a href="#correlations" class="btn btn-outline-success">Correlations</a>
+            <a href="#distributions" class="btn btn-outline-success">Distributions</a>
+            <a href="#relationships" class="btn btn-outline-success">Relationships</a>
+        </div>
+        <!-- Dataset Overview -->
+        <div class="card" id="overview">
+            <div class="card-header">
+                Dataset Overview
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="alert alert-info">
+                            <h5>Dataset Information</h5>
+                            <p><strong>Shape:</strong> {{ shape[0] }} rows × {{ shape[1] }} columns</p>
+                            <p><strong>Numeric Columns:</strong> {{ numeric_cols|length }}</p>
+                            <p><strong>Categorical Columns:</strong> {{ categorical_cols|length }}</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="alert alert-light">
+                            <h5>Data Preview</h5>
+                            <p>First 10 rows of the dataset:</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    {{ dataset_head|safe }}
+                </div>
+            </div>
+        </div>
+        <!-- Column Statistics -->
+        <div class="card" id="column-stats">
+            <div class="card-header">
+                Column Statistics
+            </div>
+            <div class="card-body">
+                <ul class="nav nav-tabs" id="columnTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="all-tab" data-bs-toggle="tab" data-bs-target="#all" type="button">All Columns</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="numeric-tab" data-bs-toggle="tab" data-bs-target="#numeric" type="button">Numeric Columns ({{ numeric_cols|length }})</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="categorical-tab" data-bs-toggle="tab" data-bs-target="#categorical" type="button">Categorical Columns ({{ categorical_cols|length }})</button>
+                    </li>
+                </ul>
+                <div class="tab-content" id="columnTabContent">
+                    <div class="tab-pane fade show active" id="all">
+                        <div class="row">
+                            {% for col in column_stats %}
+                            <div class="col-md-4 mb-4">
+                                <div class="card h-100">
+                                    <div class="card-header">{{ col.name }} <small class="text-muted">({{ col.type }})</small></div>
+                                    <div class="card-body">
+                                        <p><strong>Type:</strong> <span class="badge bg-secondary">{{ col.dtype }}</span></p>
+                                        <p><strong>Missing:</strong> <span class="badge bg-{% if col.missing_pct > 5 %}danger{% else %}success{% endif %}">{{ col.missing }} ({{ col.missing_pct }}%)</span></p>
+                                        <p><strong>Unique Values:</strong> {{ col.unique }}</p>
+                                        {% if col.type == 'Numeric' %}
+                                        <div class="mt-3">
+                                            <h6>Distribution Stats:</h6>
+                                            <table class="table table-sm">
+                                                <tr><td>Min:</td><td>{{ col.min }}</td></tr>
+                                                <tr><td>Max:</td><td>{{ col.max }}</td></tr>
+                                                <tr><td>Mean:</td><td>{{ col.mean }}</td></tr>
+                                                <tr><td>Std Dev:</td><td>{{ col.std }}</td></tr>
+                                                <tr><td>Median:</td><td>{{ col.median }}</td></tr>
+                                            </table>
+                                        </div>
+                                        {% else %}
+                                        <div class="mt-3">
+                                            <h6>Top Values:</h6>
+                                            <ul>
+                                                {% for val in col.top_values %}
+                                                <li><span class="fw-bold">{{ val.value }}</span>: {{ val.count }} <small>({{ val.pct }}%)</small></li>
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="numeric">
+                        <div class="row">
+                            {% for col in column_stats if col.type == 'Numeric' %}
+                            <div class="col-md-4 mb-4">
+                                <div class="card h-100">
+                                    <div class="card-header">{{ col.name }}</div>
+                                    <div class="card-body">
+                                        <p><strong>Missing:</strong> {{ col.missing }} ({{ col.missing_pct }}%)</p>
+                                        <p><strong>Min:</strong> {{ col.min }}</p>
+                                        <p><strong>Max:</strong> {{ col.max }}</p>
+                                        <p><strong>Mean:</strong> {{ col.mean }}</p>
+                                        <p><strong>Std Dev:</strong> {{ col.std }}</p>
+                                        <p><strong>Median:</strong> {{ col.median }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="categorical">
+                        <div class="row">
+                            {% for col in column_stats if col.type == 'Categorical' %}
+                            <div class="col-md-4 mb-4">
+                                <div class="card h-100">
+                                    <div class="card-header">{{ col.name }}</div>
+                                    <div class="card-body">
+                                        <p><strong>Missing:</strong> {{ col.missing }} ({{ col.missing_pct }}%)</p>
+                                        <p><strong>Unique Values:</strong> {{ col.unique }}</p>
+                                        <h6>Top Values:</h6>
+                                        <ul>
+                                            {% for val in col.top_values %}
+                                            <li><span class="fw-bold">{{ val.value }}</span>: {{ val.count }} <small>({{ val.pct }}%)</small></li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Correlation Analysis -->
+        {% if correlations.numeric_img or correlations.categorical_img %}
+        <div class="card" id="correlations">
+            <div class="card-header">
+                Correlation Analysis
+            </div>
+            <div class="card-body">
+                <div class="alert alert-success">
+                    <strong>Understanding Correlations:</strong> Positive values (green) indicate variables that increase together, negative values (red) indicate inverse relationships.
+                </div>
+                <ul class="nav nav-tabs" id="correlationTab" role="tablist">
+                    {% if correlations.numeric_img %}
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="numeric-corr-tab" data-bs-toggle="tab" data-bs-target="#numeric-corr" type="button">Numeric Correlations</button>
+                    </li>
+                    {% endif %}
+                    {% if correlations.categorical_img %}
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="categorical-corr-tab" data-bs-toggle="tab" data-bs-target="#categorical-corr" type="button">Categorical Associations</button>
+                    </li>
+                    {% endif %}
+                </ul>
+                <div class="tab-content" id="correlationTabContent">
+                    {% if correlations.numeric_img %}
+                    <div class="tab-pane fade show active" id="numeric-corr">
+                        <img src="data:image/png;base64,{{ correlations.numeric_img }}" class="plot-img zoomable" alt="Numeric Correlation Matrix">
+                    </div>
+                    {% endif %}
+                    {% if correlations.categorical_img %}
+                    <div class="tab-pane fade" id="categorical-corr">
+                        <div class="alert alert-info mt-3">
+                            <strong>Cramer's V:</strong> Measures association between categorical variables (0 = no association, 1 = complete association)
+                        </div>
+                        <img src="data:image/png;base64,{{ correlations.categorical_img }}" class="plot-img zoomable" alt="Categorical Correlation Matrix">
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        <!-- Distributions -->
+        <div class="card" id="distributions">
+            <div class="card-header">
+                Distributions
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning">
+                    <strong>Distribution Insights:</strong> Histograms show frequency distributions, boxplots show quartiles and outliers.
+                </div>
+                <ul class="nav nav-tabs" id="distributionTab" role="tablist">
+                    {% for col in column_stats %}
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link {% if loop.first %}active{% endif %}" id="{{ col.name }}-tab" data-bs-toggle="tab" data-bs-target="#{{ col.name }}" type="button">{{ col.name }}</button>
+                    </li>
+                    {% endfor %}
+                </ul>
+                <div class="tab-content" id="distributionTabContent">
+                    {% for col in column_stats %}
+                    <div class="tab-pane fade {% if loop.first %}show active{% endif %}" id="{{ col.name }}">
+                        <h5>{{ col.name }} Distribution</h5>
+                        <img src="data:image/png;base64,{{ distributions[col.name] }}" class="plot-img zoomable" alt="{{ col.name }} Distribution">
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        <!-- Relationships -->
+        {% if relationships %}
+        <div class="card" id="relationships">
+            <div class="card-header">
+                Relationships
+            </div>
+            <div class="card-body">
+                <div class="alert alert-danger">
+                    <strong>Relationship Analysis:</strong> Visualizing how different variables interact with each other.
+                </div>
+                <div class="row">
+                    {% if 'pairplot' in relationships %}
+                    <div class="col-md-6 mb-4">
+                        <div class="card">
+                            <div class="card-header bg-light">Pair Plot</div>
+                            <div class="card-body">
+                                <p>Shows relationships between multiple numeric variables:</p>
+                                <img src="data:image/png;base64,{{ relationships.pairplot }}" class="plot-img zoomable" alt="Pair Plot">
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if 'scatterplot' in relationships %}
+                    <div class="col-md-6 mb-4">
+                        <div class="card">
+                            <div class="card-header bg-light">Scatter Plot</div>
+                            <div class="card-body">
+                                <p>Relationship between {{ numeric_cols[0] }} and {{ numeric_cols[1] }}:</p>
+                                <img src="data:image/png;base64,{{ relationships.scatterplot }}" class="plot-img zoomable" alt="Scatter Plot">
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if 'cat_num' in relationships %}
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header bg-light">Categorical vs Numeric Comparison</div>
+                            <div class="card-body">
+                                <p>Comparing {{ categorical_cols[0] }} with {{ numeric_cols[0] }}:</p>
+                                <img src="data:image/png;base64,{{ relationships.cat_num }}" class="plot-img zoomable" alt="Categorical vs Numeric">
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        <div class="footer">
+            <span class="dice-logo"><span class="dice-dot"></span>Dice</span> &mdash; Effortless EDA Reports
+        </div>
+    </div>
+    <!-- Modal for zooming images -->
+    <div class="modal fade" id="imgModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="background: transparent; border: none; box-shadow: none;">
+                <div class="modal-body text-center p-0">
+                    <div id="panzoom-container" style="display: inline-block;">
+                        <img id="modalImg" src="" class="modal-img" alt="Zoomed Plot">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@panzoom/panzoom@9.4.0/dist/panzoom.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.plot-img.zoomable').forEach(function(img) {
+                img.addEventListener('click', function() {
+                    document.getElementById('modalImg').src = this.src;
+                    var modal = new bootstrap.Modal(document.getElementById('imgModal'));
+                    modal.show();
+                    setTimeout(function() {
+                        if (window.panzoomInstance) window.panzoomInstance.destroy();
+                        window.panzoomInstance = Panzoom(document.getElementById('modalImg'), {
+                            maxScale: 8,
+                            minScale: 1,
+                            contain: 'outside'
+                        });
+                    }, 300);
+                });
+            });
+        });
+    </script>
+</body>
+</html>

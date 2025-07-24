@@ -1,0 +1,8 @@
+flask
+flask-cors
+pandas
+numpy
+seaborn
+matplotlib
+jinja2
+scipy 

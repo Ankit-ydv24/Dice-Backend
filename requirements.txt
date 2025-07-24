@@ -6,3 +6,4 @@ seaborn
 matplotlib
 jinja2
 scipy 
+gunicorn

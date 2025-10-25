@@ -50,4 +50,6 @@ def generate_report():
         return response
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000) 
+    debug = os.getenv('FLASK_DEBUG', '0') == '1'
+    port = int(os.getenv('PORT', '5000'))
+    app.run(debug=debug, port=port)

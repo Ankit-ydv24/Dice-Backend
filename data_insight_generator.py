@@ -1,11 +1,13 @@
 import pandas as pd
 import numpy as np
 import seaborn as sns
+import matplotlib
+# Use a non-GUI backend for headless environments (e.g., servers, CI, Windows without GUI libs)
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from io import BytesIO
 import base64
 from jinja2 import Template
-from scipy import stats
 import os
 import datetime
 
@@ -80,7 +82,7 @@ class DataInsightGenerator:
             results['numeric_img'] = self._get_base64_plot()
             results['numeric_matrix'] = corr_matrix.to_dict()
         
-        # Cramer's V for categorical associations
+        # Cramer's V for categorical associations (no SciPy dependency)
         if len(self.categorical_cols) > 1:
             cramers_matrix = pd.DataFrame(
                 index=self.categorical_cols, 
@@ -94,11 +96,24 @@ class DataInsightGenerator:
                         cramers_matrix.loc[col1, col2] = 1.0
                     else:
                         confusion_matrix = pd.crosstab(self.df[col1], self.df[col2])
-                        chi2 = stats.chi2_contingency(confusion_matrix)[0]
-                        n = confusion_matrix.sum().sum()
+                        observed = confusion_matrix.values.astype(float)
+                        # Guard against empty or degenerate tables
+                        if observed.size == 0:
+                            cramers_matrix.loc[col1, col2] = np.nan
+                            continue
+                        row_sums = observed.sum(axis=1, keepdims=True)
+                        col_sums = observed.sum(axis=0, keepdims=True)
+                        total = observed.sum()
+                        # Expected frequencies
+                        expected = (row_sums @ col_sums) / max(total, 1.0)
+                        # Avoid division by zero by masking zeros in expected
+                        with np.errstate(divide='ignore', invalid='ignore'):
+                            chi2 = np.nansum(((observed - expected) ** 2) / np.where(expected > 0, expected, np.nan))
+                        n = total if total > 0 else 1.0
+                        r, k = observed.shape
+                        denom = max(min(k - 1, r - 1), 1)
                         phi2 = chi2 / n
-                        r, k = confusion_matrix.shape
-                        cramers_v = np.sqrt(phi2 / min(k-1, r-1))
+                        cramers_v = float(np.sqrt(max(phi2 / denom, 0.0)))
                         cramers_matrix.loc[col1, col2] = cramers_v
             
             plt.figure(figsize=(12, 8))
